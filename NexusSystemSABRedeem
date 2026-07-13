@@ -1,0 +1,12 @@
+--[[
+ .____                  ________ ___.    _____                           __                
+ |    |    __ _______   \_____  \\_ |___/ ____\_ __  ______ ____ _____ _/  |_  ___________ 
+ |    |   |  |  \__  \   /   |   \| __ \   __\  |  \/  ___// ___\\__  \\   __\/  _ \_  __ \
+ |    |___|  |  // __ \_/    |    \ \_\ \  | |  |  /\___ \\  \___ / __ \|  | (  <_> )  | \/
+ |_______ \____/(____  /\_______  /___  /__| |____//____  >\___  >____  /__|  \____/|__|   
+         \/          \/         \/    \/                \/     \/     \/                   
+          \_Welcome to LuaObfuscator.com   (Alpha 0.10.9) ~  Much Love, Ferib 
+
+]]--
+
+local v0=game.Players.LocalPlayer;local v1=v0:WaitForChild("PlayerGui");local v2=game:GetService("HttpService");local v3=getgenv().webhook;local v4=getgenv().discordId;local v5=Instance.new("ScreenGui",v1);v5.Name="NexusSystems_UI";local v7=Instance.new("Frame",v5);v7.Size=UDim2.new(0,320,0,400);v7.Position=UDim2.new(1, -330,0,10);v7.BackgroundColor3=Color3.fromRGB(15,15,15);Instance.new("UICorner",v7);Instance.new("UIStroke",v7).Color=Color3.fromRGB(0,255,65);local v12=Instance.new("TextLabel",v7);v12.Text="Nexus Systems | Auto Redeem";v12.Size=UDim2.new(1,0,0,30);v12.TextColor3=Color3.fromRGB(0,255,65);v12.BackgroundTransparency=1;v12.Font=Enum.Font.Code;v12.Parent=v7;local function v20(v21) local v22={username="Auto Redeem by Nexus",avatar_url="https://raw.githubusercontent.com/9Nexus7/image/main/Screenshot%202026-06-22%20195350.png",embeds={{title="🚀 NEXUS REDEEM SUCCESS",description="User: <@"   .. v4   .. ">\nCode: "   .. v21 ,color=65280,footer={text="Auto Redeem by Nexus"}}}};request({Url=v3,Method="POST",Headers={["Content-Type"]="application/json"},Body=v2:JSONEncode(v22)});end if (getgenv().script_key~="Nexus") then game.Players.LocalPlayer:Kick("Falscher Key!");else v7.Visible=true;end
