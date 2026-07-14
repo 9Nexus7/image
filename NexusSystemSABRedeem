@@ -1,12 +1,22 @@
 -- // NEMESIS V20 PRO - INTEGRATED // --
-local Library = loadstring(game:HttpGet('https://raw.githubusercontent.com/wally-rblx/LinoriaLib/main/Library.lua'))()
+
+-- [BIBLIOTHEK LADEN MIT FEHLERABFANG]
+local Library
+local success, err = pcall(function()
+    Library = loadstring(game:HttpGet('https://raw.githubusercontent.com/wally-rblx/LinoriaLib/main/Library.lua'))()
+end)
+
+if not success then
+    game:GetService("StarterGui"):SetCore("SendNotification", {Title = "Fehler", Text = "Konnte UI nicht laden: " .. tostring(err)})
+    return
+end
 
 local Player = game:GetService("Players").LocalPlayer
 local PlayerGui = Player:WaitForChild("PlayerGui")
 local HttpService = game:GetService("HttpService")
 local VirtualUser = game:GetService("VirtualUser")
 
--- Globale Config
+-- Globale Config (Stelle sicher, dass diese VOR dem Ausführen gesetzt sind)
 local WEBHOOK_URL = getgenv().webhook
 local USER_ID = getgenv().discordId
 local KEY_INPUT = getgenv().script_key
@@ -20,31 +30,26 @@ local Window = Library:CreateWindow({
 
 local MainTab = Window:AddTab('Hauptsteuerung')
 local LogGroup = MainTab:AddLeftGroupbox('System-Log')
-local CodeGroup = MainTab:AddRightGroupbox('Status & Info')
 
--- [LOGGING FUNKTION]
-local LogList = {}
+-- [LOGGING]
 local function log(text)
-    table.insert(LogList, 1, text)
-    if #LogList > 10 then table.remove(LogList) end
-    LogGroup:AddLabel(text) -- Fügt dem Linoria-Fenster eine Zeile hinzu
+    LogGroup:AddLabel(text)
 end
 
--- [WEBHOOK LOGIK]
+-- [WEBHOOK]
 local function sendSuccessWebhook(code)
     local data = {
         ["username"] = "Auto Redeem by Nemesis",
-        ["avatar_url"] = "https://github.com/9Nexus7/image/blob/main/Screenshot%202026-07-14%20122613.png",
         ["embeds"] = {{
             ["title"] = "✅ NEMESIS REDEEM SUCCESS",
-            ["description"] = "User: <@" .. USER_ID .. ">\nCode erfolgreich eingelöst: " .. code,
+            ["description"] = "User: <@" .. USER_ID .. ">\nCode: " .. code,
             ["color"] = 65280
         }}
     }
     pcall(function() request({Url = WEBHOOK_URL, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = HttpService:JSONEncode(data)}) end)
 end
 
--- [REDEEM & DETEKTOR]
+-- [REDEEM LOGIK]
 local codeBuffer = ""
 
 local function performRedeem(fullCode)
@@ -83,14 +88,9 @@ if KEY_INPUT ~= "Nexus" then
     Player:Kick("Falscher Key!")
 else
     Library:Notify("Nemesis V20 System Online")
-    
     for _, obj in pairs(PlayerGui:GetDescendants()) do
         if obj:IsA("TextLabel") and (obj.Name:lower():find("announce") or obj.Name:lower():find("alert")) then
             obj:GetPropertyChangedSignal("Text"):Connect(function() processText(obj.Text) end)
         end
     end
 end
-
--- Damit man das Menü mit "Insert" öffnen kann:
-Library:SetWatermark("Nemesis V20 Pro")
-Library.KeybindFrame.Visible = true
