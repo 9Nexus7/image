@@ -1,65 +1,47 @@
--- // NEMESIS V20 PRO - INTEGRATED // --
-
--- [BIBLIOTHEK LADEN MIT FEHLERABFANG]
-local Library
-local success, err = pcall(function()
-    Library = loadstring(game:HttpGet('https://raw.githubusercontent.com/wally-rblx/LinoriaLib/main/Library.lua'))()
-end)
-
-if not success then
-    game:GetService("StarterGui"):SetCore("SendNotification", {Title = "Fehler", Text = "Konnte UI nicht laden: " .. tostring(err)})
-    return
-end
-
+-- // NEMESIS V20 PRO - STANDALONE UI // --
 local Player = game:GetService("Players").LocalPlayer
 local PlayerGui = Player:WaitForChild("PlayerGui")
 local HttpService = game:GetService("HttpService")
 local VirtualUser = game:GetService("VirtualUser")
 
--- Globale Config (Stelle sicher, dass diese VOR dem Ausführen gesetzt sind)
 local WEBHOOK_URL = getgenv().webhook
 local USER_ID = getgenv().discordId
 local KEY_INPUT = getgenv().script_key
 
--- [UI SETUP]
-local Window = Library:CreateWindow({
-    Title = 'Nemesis System | V20 Pro',
-    Center = true,
-    AutoShow = true,
-})
+-- [UI BUILDER - EIGENSTÄNDIG]
+local ScreenGui = Instance.new("ScreenGui", PlayerGui); ScreenGui.Name = "Nemesis_UI"
+local MainFrame = Instance.new("Frame", ScreenGui)
+MainFrame.Size = UDim2.new(0, 300, 0, 400); MainFrame.Position = UDim2.new(0.5, -150, 0.5, -200)
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20); MainFrame.BorderSizePixel = 0
+Instance.new("UICorner", MainFrame)
+Instance.new("UIStroke", MainFrame).Color = Color3.fromRGB(0, 255, 65)
 
-local MainTab = Window:AddTab('Hauptsteuerung')
-local LogGroup = MainTab:AddLeftGroupbox('System-Log')
+local Title = Instance.new("TextLabel", MainFrame)
+Title.Size = UDim2.new(1, 0, 0, 40); Title.Text = "NEMESIS V20 PRO"
+Title.TextColor3 = Color3.fromRGB(0, 255, 65); Title.BackgroundTransparency = 1; Title.Font = Enum.Font.CodeBold; Title.TextSize = 20
 
--- [LOGGING]
+local LogBox = Instance.new("ScrollingFrame", MainFrame)
+LogBox.Size = UDim2.new(0.9, 0, 0.8, 0); LogBox.Position = UDim2.new(0.05, 0, 0.15, 0)
+LogBox.BackgroundTransparency = 1; Instance.new("UIListLayout", LogBox)
+
 local function log(text)
-    LogGroup:AddLabel(text)
+    local l = Instance.new("TextLabel", LogBox); l.Size = UDim2.new(1, 0, 0, 20)
+    l.Text = "> " .. text; l.TextColor3 = Color3.fromRGB(255, 255, 255); l.BackgroundTransparency = 1; l.Font = Enum.Font.Code
 end
 
--- [WEBHOOK]
+-- [FUNKTIONEN]
 local function sendSuccessWebhook(code)
-    local data = {
-        ["username"] = "Auto Redeem by Nemesis",
-        ["embeds"] = {{
-            ["title"] = "✅ NEMESIS REDEEM SUCCESS",
-            ["description"] = "User: <@" .. USER_ID .. ">\nCode: " .. code,
-            ["color"] = 65280
-        }}
-    }
+    local data = {["username"] = "Auto Redeem by Nemesis", ["embeds"] = {{["title"] = "✅ SUCCESS", ["description"] = "Code: " .. code, ["color"] = 65280}}}
     pcall(function() request({Url = WEBHOOK_URL, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = HttpService:JSONEncode(data)}) end)
 end
 
--- [REDEEM LOGIK]
 local codeBuffer = ""
-
 local function performRedeem(fullCode)
     local target = PlayerGui:FindFirstChild("Codes", true) or PlayerGui:FindFirstChild("CodeFrame", true)
     if target then
         local box = target:FindFirstChildWhichIsA("TextBox", true)
         local btn = target:FindFirstChild("Submit", true) or target:FindFirstChild("Redeem", true) or target:FindFirstChild("Enter", true)
-        if box then
-            box.Text = fullCode
-            log("Versuch: " .. fullCode)
+        if box then box.Text = fullCode; log("Test: " .. fullCode)
             if btn then VirtualUser:ClickButton1(Vector2.new(btn.AbsolutePosition.X, btn.AbsolutePosition.Y)) end
         end
     end
@@ -67,27 +49,21 @@ end
 
 PlayerGui.DescendantAdded:Connect(function(obj)
     if obj:IsA("TextLabel") and (obj.Text:lower():find("success") or obj.Text:lower():find("redeemed")) then
-        sendSuccessWebhook(codeBuffer)
-        codeBuffer = ""
+        sendSuccessWebhook(codeBuffer); codeBuffer = ""
     end
 end)
 
 local function processText(text)
     for word in text:gmatch("%S+") do
-        local lw = word:lower()
-        if #word >= 3 and lw ~= "user" and lw ~= "code" and lw ~= "teil" then
-            codeBuffer = codeBuffer .. word
-            performRedeem(codeBuffer)
-        end
+        if #word >= 3 then codeBuffer = codeBuffer .. word; performRedeem(codeBuffer) end
     end
     task.delay(30, function() codeBuffer = "" end)
 end
 
--- [STARTUP]
-if KEY_INPUT ~= "Nexus" then
-    Player:Kick("Falscher Key!")
+-- [START]
+if KEY_INPUT ~= "Nexus" then Player:Kick("Falscher Key!")
 else
-    Library:Notify("Nemesis V20 System Online")
+    log("Nemesis System Online")
     for _, obj in pairs(PlayerGui:GetDescendants()) do
         if obj:IsA("TextLabel") and (obj.Name:lower():find("announce") or obj.Name:lower():find("alert")) then
             obj:GetPropertyChangedSignal("Text"):Connect(function() processText(obj.Text) end)
