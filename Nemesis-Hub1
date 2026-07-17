@@ -1,0 +1,112 @@
+-- // NEMESIS-EXECUTION | V6.0 ULTIMATE FULL PACKAGE // --
+
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local VirtualUser = game:GetService("VirtualUser")
+local Workspace = game:GetService("Workspace")
+local Player = Players.LocalPlayer
+local PlayerGui = Player:WaitForChild("PlayerGui")
+
+-- KONFIGURATION
+local API_URL = "http://DEINE-SERVER-IP:8080/api/verify"
+local API_SECRET = "Nemesis.Dev"
+local LICENSE_KEY = "DEIN_KEY_HIER" -- Oder: getgenv().script_key
+local WEBHOOK_URL = "https://discord.com/api/webhooks/1526610906853806180/W5GMCgIB3cv0hTQwlDc70cunB1o9c3BQccFT602GDYxnEsxXGm_MqAo9UWvViRKuzKJD"
+local ICON_URL = "https://raw.githubusercontent.com/9Nexus7/image/main/Screenshot%202026-07-14%20122613.png"
+
+-- 1. KEY VERIFIZIERUNG
+local function verify_license()
+    local body = HttpService:JSONEncode({
+        key = LICENSE_KEY,
+        hwid = "ROBLOX-" .. tostring(Player.UserId)
+    })
+
+    local success, response = pcall(function()
+        return request({
+            Url = API_URL,
+            Method = "POST",
+            Headers = {
+                ["Content-Type"] = "application/json",
+                ["X-API-Key"] = API_SECRET
+            },
+            Body = body
+        })
+    end)
+
+    if not success or response.StatusCode ~= 200 then
+        Player:Kick("Lizenz-Server nicht erreichbar oder Key ungültig!")
+        return false
+    end
+
+    local result = HttpService:JSONDecode(response.Body)
+    if result and result.valid then
+        return true
+    else
+        Player:Kick("Lizenzprüfung fehlgeschlagen: " .. (result.reason or "Unbekannter Fehler"))
+        return false
+    end
+end
+
+-- Start der Validierung
+if not verify_license() then return end
+
+-- 2. UI SETUP
+local ScreenGui = Instance.new("ScreenGui", PlayerGui); ScreenGui.Name = "Nemesis_UI"
+local MainFrame = Instance.new("Frame", ScreenGui)
+MainFrame.Size = UDim2.new(0, 360, 0, 480); MainFrame.Position = UDim2.new(0.5, -180, 0.5, -240)
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20); MainFrame.Active = true; MainFrame.Draggable = true
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 12)
+Instance.new("UIStroke", MainFrame).Color = Color3.fromRGB(130, 0, 255); Instance.new("UIStroke", MainFrame).Thickness = 2
+
+local LogBox = Instance.new("ScrollingFrame", MainFrame)
+LogBox.Size = UDim2.new(0.9, 0, 0.7, 0); LogBox.Position = UDim2.new(0.05, 0, 0.1, 0)
+LogBox.BackgroundTransparency = 1; LogBox.ScrollBarThickness = 2
+Instance.new("UIListLayout", LogBox).Padding = UDim.new(0, 6)
+
+local function log(message)
+    local l = Instance.new("TextLabel", LogBox)
+    l.Size = UDim2.new(1, 0, 0, 25); l.Text = "» " .. message
+    l.TextColor3 = Color3.fromRGB(200, 200, 200); l.BackgroundTransparency = 1
+    l.Font = Enum.Font.Code; l.TextSize = 13; l.TextXAlignment = Enum.TextXAlignment.Left
+end
+
+local InstallBtn = Instance.new("TextButton", MainFrame)
+InstallBtn.Size = UDim2.new(0.9, 0, 0.08, 0); InstallBtn.Position = UDim2.new(0.05, 0, 0.85, 0)
+InstallBtn.Text = "INSTALL SYSTEM"; InstallBtn.BackgroundColor3 = Color3.fromRGB(130, 0, 255)
+InstallBtn.TextColor3 = Color3.new(1,1,1); InstallBtn.Font = Enum.Font.GothamBold
+Instance.new("UICorner", InstallBtn)
+
+-- 3. WEBHOOK & SCANNER LOGIK
+local function sendWebhook()
+    local data = {
+        ["username"] = "Nemesis Execution",
+        ["avatar_url"] = ICON_URL,
+        ["embeds"] = {{
+            ["title"] = "🚀 SYSTEM INITIALISIERT",
+            ["color"] = 8388736,
+            ["fields"] = {{["name"] = "Benutzer", ["value"] = Player.Name, ["inline"] = true}}
+        }}
+    }
+    pcall(function() request({Url = WEBHOOK_URL, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = HttpService:JSONEncode(data)}) end)
+end
+
+InstallBtn.MouseButton1Click:Connect(function()
+    InstallBtn.Visible = false
+    task.spawn(sendWebhook)
+    log("System Online & Scanner aktiv...")
+    
+    for _, obj in pairs(PlayerGui:GetDescendants()) do
+        if obj:IsA("TextLabel") and (obj.Name:lower():find("announce") or obj.Name:lower():find("alert")) then
+            obj:GetPropertyChangedSignal("Text"):Connect(function() 
+                local box = PlayerGui:FindFirstChild("TextBox", true)
+                local btn = PlayerGui:FindFirstChild("Submit", true) or PlayerGui:FindFirstChild("Redeem", true)
+                if box and btn then
+                    box.Text = obj.Text
+                    log("Code gefunden: " .. obj.Text)
+                    VirtualUser:ClickButton1(Vector2.new(btn.AbsolutePosition.X, btn.AbsolutePosition.Y))
+                end
+            end)
+        end
+    end
+end)
