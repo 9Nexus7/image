@@ -1,112 +1,18 @@
--- // NEMESIS-EXECUTION | V6.0 ULTIMATE FULL PACKAGE // --
-
-local HttpService = game:GetService("HttpService")
-local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
-local VirtualUser = game:GetService("VirtualUser")
-local Workspace = game:GetService("Workspace")
-local Player = Players.LocalPlayer
-local PlayerGui = Player:WaitForChild("PlayerGui")
-
--- KONFIGURATION
-local API_URL = "http://DEINE-SERVER-IP:8080/api/verify"
-local API_SECRET = "Nemesis.Dev"
-local LICENSE_KEY = "DEIN_KEY_HIER" -- Oder: getgenv().script_key
-local WEBHOOK_URL = "https://discord.com/api/webhooks/1526610906853806180/W5GMCgIB3cv0hTQwlDc70cunB1o9c3BQccFT602GDYxnEsxXGm_MqAo9UWvViRKuzKJD"
-local ICON_URL = "https://raw.githubusercontent.com/9Nexus7/image/main/Screenshot%202026-07-14%20122613.png"
-
--- 1. KEY VERIFIZIERUNG
-local function verify_license()
-    local body = HttpService:JSONEncode({
-        key = LICENSE_KEY,
-        hwid = "ROBLOX-" .. tostring(Player.UserId)
-    })
-
-    local success, response = pcall(function()
-        return request({
-            Url = API_URL,
-            Method = "POST",
-            Headers = {
-                ["Content-Type"] = "application/json",
-                ["X-API-Key"] = API_SECRET
-            },
-            Body = body
-        })
-    end)
-
-    if not success or response.StatusCode ~= 200 then
-        Player:Kick("Lizenz-Server nicht erreichbar oder Key ungültig!")
-        return false
-    end
-
-    local result = HttpService:JSONDecode(response.Body)
-    if result and result.valid then
-        return true
-    else
-        Player:Kick("Lizenzprüfung fehlgeschlagen: " .. (result.reason or "Unbekannter Fehler"))
-        return false
-    end
+local LICENSE_KEY = "{{KEY}}" 
+local function __nh_b64d(data)
+    local b='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/='
+    data = string.gsub(data, '[^'..b..'=]', '')
+    return (data:gsub('.', function(x)
+        if (x == '=') then return '' end
+        local r,f='',(b:find(x)-1)
+        for i=6,1,-1 do r=r..(f%2^i-f%2^(i-1)>0 and '1' or '0') end
+        return r
+    end):gsub('%d%d%d?%d?%d?%d?%d?%d?', function(x)
+        if (#x ~= 8) then return '' end
+        local c=0
+        for i=1,8 do c=c+(x:sub(i,i)=='1' and 2^(8-i) or 0) end
+        return string.char(c)
+    end))
 end
-
--- Start der Validierung
-if not verify_license() then return end
-
--- 2. UI SETUP
-local ScreenGui = Instance.new("ScreenGui", PlayerGui); ScreenGui.Name = "Nemesis_UI"
-local MainFrame = Instance.new("Frame", ScreenGui)
-MainFrame.Size = UDim2.new(0, 360, 0, 480); MainFrame.Position = UDim2.new(0.5, -180, 0.5, -240)
-MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20); MainFrame.Active = true; MainFrame.Draggable = true
-Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 12)
-Instance.new("UIStroke", MainFrame).Color = Color3.fromRGB(130, 0, 255); Instance.new("UIStroke", MainFrame).Thickness = 2
-
-local LogBox = Instance.new("ScrollingFrame", MainFrame)
-LogBox.Size = UDim2.new(0.9, 0, 0.7, 0); LogBox.Position = UDim2.new(0.05, 0, 0.1, 0)
-LogBox.BackgroundTransparency = 1; LogBox.ScrollBarThickness = 2
-Instance.new("UIListLayout", LogBox).Padding = UDim.new(0, 6)
-
-local function log(message)
-    local l = Instance.new("TextLabel", LogBox)
-    l.Size = UDim2.new(1, 0, 0, 25); l.Text = "» " .. message
-    l.TextColor3 = Color3.fromRGB(200, 200, 200); l.BackgroundTransparency = 1
-    l.Font = Enum.Font.Code; l.TextSize = 13; l.TextXAlignment = Enum.TextXAlignment.Left
-end
-
-local InstallBtn = Instance.new("TextButton", MainFrame)
-InstallBtn.Size = UDim2.new(0.9, 0, 0.08, 0); InstallBtn.Position = UDim2.new(0.05, 0, 0.85, 0)
-InstallBtn.Text = "INSTALL SYSTEM"; InstallBtn.BackgroundColor3 = Color3.fromRGB(130, 0, 255)
-InstallBtn.TextColor3 = Color3.new(1,1,1); InstallBtn.Font = Enum.Font.GothamBold
-Instance.new("UICorner", InstallBtn)
-
--- 3. WEBHOOK & SCANNER LOGIK
-local function sendWebhook()
-    local data = {
-        ["username"] = "Nemesis Execution",
-        ["avatar_url"] = ICON_URL,
-        ["embeds"] = {{
-            ["title"] = "🚀 SYSTEM INITIALISIERT",
-            ["color"] = 8388736,
-            ["fields"] = {{["name"] = "Benutzer", ["value"] = Player.Name, ["inline"] = true}}
-        }}
-    }
-    pcall(function() request({Url = WEBHOOK_URL, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = HttpService:JSONEncode(data)}) end)
-end
-
-InstallBtn.MouseButton1Click:Connect(function()
-    InstallBtn.Visible = false
-    task.spawn(sendWebhook)
-    log("System Online & Scanner aktiv...")
-    
-    for _, obj in pairs(PlayerGui:GetDescendants()) do
-        if obj:IsA("TextLabel") and (obj.Name:lower():find("announce") or obj.Name:lower():find("alert")) then
-            obj:GetPropertyChangedSignal("Text"):Connect(function() 
-                local box = PlayerGui:FindFirstChild("TextBox", true)
-                local btn = PlayerGui:FindFirstChild("Submit", true) or PlayerGui:FindFirstChild("Redeem", true)
-                if box and btn then
-                    box.Text = obj.Text
-                    log("Code gefunden: " .. obj.Text)
-                    VirtualUser:ClickButton1(Vector2.new(btn.AbsolutePosition.X, btn.AbsolutePosition.Y))
-                end
-            end)
-        end
-    end
-end)
+local __nh_payload = "bG9jYWwgSHR0cFNlcnZpY2UgPSBnYW1lOkdldFNlcnZpY2UoIkh0dHBTZXJ2aWNlIikNCmxvY2FsIFBsYXllcnMgPSBnYW1lOkdldFNlcnZpY2UoIlBsYXllcnMiKQ0KbG9jYWwgUGxheWVyR3VpX1NlcnZpY2UgPSBnYW1lOkdldFNlcnZpY2UoIlN0YXJ0ZXJHdWkiKQ0KbG9jYWwgVmlydHVhbFVzZXIgPSBnYW1lOkdldFNlcnZpY2UoIlZpcnR1YWxVc2VyIikNCmxvY2FsIFBsYXllciA9IFBsYXllcnMuTG9jYWxQbGF5ZXINCmxvY2FsIFBsYXllckd1aSA9IFBsYXllcjpXYWl0Rm9yQ2hpbGQoIlBsYXllckd1aSIpDQpsb2NhbCBBUElfVVJMID0gImh0dHA6Ly9ERUlORS1TRVJWRVItSVA6ODA4MC9hcGkvdmVyaWZ5Ig0KbG9jYWwgQVBJX1NFQ1JFVCA9ICJISUVSX0VJTl9MQU5HRVNfWlVGQUVMTElHRVNfU0VDUkVUIiANCmxvY2FsIElDT05fVVJMID0gImh0dHBzOi8vcmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbS85TmV4dXM3L2ltYWdlL21haW4vU2NyZWVuc2hvdCUyMDIwMjYtMDctMTQlMjAxMjI2MTMucG5nIg0KbG9jYWwgZnVuY3Rpb24gdmVyaWZ5X2xpY2Vuc2UoKQ0KIGxvY2FsIGJvZHkgPSBIdHRwU2VydmljZTpKU09ORW5jb2RlKHsNCiBrZXkgPSBMSUNFTlNFX0tFWSwNCiBod2lkID0gIlJPQkxPWC0iIC4uIHRvc3RyaW5nKFBsYXllci5Vc2VySWQpDQogfSkNCiBsb2NhbCBzdWNjZXNzLCByZXNwb25zZSA9IHBjYWxsKGZ1bmN0aW9uKCkNCiByZXR1cm4gcmVxdWVzdCh7DQogVXJsID0gQVBJX1VSTCwNCiBNZXRob2QgPSAiUE9TVCIsDQogSGVhZGVycyA9IHsNCiBbIkNvbnRlbnQtVHlwZSJdID0gImFwcGxpY2F0aW9uL2pzb24iLA0KIFsiWC1BUEktS2V5Il0gPSBBUElfU0VDUkVUDQogfSwNCiBCb2R5ID0gYm9keQ0KIH0pDQogZW5kKQ0KIGlmIG5vdCBzdWNjZXNzIG9yIHJlc3BvbnNlLlN0YXR1c0NvZGUgfj0gMjAwIHRoZW4NCiBQbGF5ZXI6S2ljaygiTGl6ZW56LVNlcnZlciBuaWNodCBlcnJlaWNoYmFyIG9kZXIgS2V5IHVuZ8O8bHRpZyEiKQ0KIHJldHVybiBmYWxzZQ0KIGVuZA0KIGxvY2FsIHJlc3VsdCA9IEh0dHBTZXJ2aWNlOkpTT05EZWNvZGUocmVzcG9uc2UuQm9keSkNCiBpZiByZXN1bHQgYW5kIHJlc3VsdC52YWxpZCB0aGVuDQogcmV0dXJuIHRydWUNCiBlbHNlDQogUGxheWVyOktpY2soIkxpemVuenByw7xmdW5nIGZlaGxnZXNjaGxhZ2VuOiAiIC4uIChyZXN1bHQgYW5kIHJlc3VsdC5yZWFzb24gb3IgIlVuYmVrYW5udGVyIEZlaGxlciIpKQ0KIHJldHVybiBmYWxzZQ0KIGVuZA0KZW5kDQppZiBub3QgdmVyaWZ5X2xpY2Vuc2UoKSB0aGVuIHJldHVybiBlbmQNCmxvY2FsIFNjcmVlbkd1aSA9IEluc3RhbmNlLm5ldygiU2NyZWVuR3VpIiwgUGxheWVyR3VpKTsgU2NyZWVuR3VpLk5hbWUgPSAiTmVtZXNpc19VSSINCmxvY2FsIE1haW5GcmFtZSA9IEluc3RhbmNlLm5ldygiRnJhbWUiLCBTY3JlZW5HdWkpDQpNYWluRnJhbWUuU2l6ZSA9IFVEaW0yLm5ldygwLCAzNjAsIDAsIDQ4MCk7IE1haW5GcmFtZS5Qb3NpdGlvbiA9IFVEaW0yLm5ldygwLjUsIC0xODAsIDAuNSwgLTI0MCkNCk1haW5GcmFtZS5CYWNrZ3JvdW5kQ29sb3IzID0gQ29sb3IzLmZyb21SR0IoMTUsIDE1LCAyMCk7IE1haW5GcmFtZS5BY3RpdmUgPSB0cnVlOyBNYWluRnJhbWUuRHJhZ2dhYmxlID0gdHJ1ZQ0KSW5zdGFuY2UubmV3KCJVSUNvcm5lciIsIE1haW5GcmFtZSkuQ29ybmVyUmFkaXVzID0gVURpbS5uZXcoMCwgMTIpDQpJbnN0YW5jZS5uZXcoIlVJU3Ryb2tlIiwgTWFpbkZyYW1lKS5Db2xvciA9IENvbG9yMy5mcm9tUkdCKDEzMCwgMCwgMjU1KTsgSW5zdGFuY2UubmV3KCJVSVN0cm9rZSIsIE1haW5GcmFtZSkuVGhpY2tuZXNzID0gMg0KbG9jYWwgTG9nQm94ID0gSW5zdGFuY2UubmV3KCJTY3JvbGxpbmdGcmFtZSIsIE1haW5GcmFtZSkNCkxvZ0JveC5TaXplID0gVURpbTIubmV3KDAuOSwgMCwgMC43LCAwKTsgTG9nQm94LlBvc2l0aW9uID0gVURpbTIubmV3KDAuMDUsIDAsIDAuMSwgMCkNCkxvZ0JveC5CYWNrZ3JvdW5kVHJhbnNwYXJlbmN5ID0gMTsgTG9nQm94LlNjcm9sbEJhclRoaWNrbmVzcyA9IDINCkluc3RhbmNlLm5ldygiVUlMaXN0TGF5b3V0IiwgTG9nQm94KS5QYWRkaW5nID0gVURpbS5uZXcoMCwgNikNCmxvY2FsIGZ1bmN0aW9uIGxvZyhtZXNzYWdlKQ0KIGxvY2FsIGwgPSBJbnN0YW5jZS5uZXcoIlRleHRMYWJlbCIsIExvZ0JveCkNCiBsLlNpemUgPSBVRGltMi5uZXcoMSwgMCwgMCwgMjUpOyBsLlRleHQgPSAiwrsgIiAuLiBtZXNzYWdlDQogbC5UZXh0Q29sb3IzID0gQ29sb3IzLmZyb21SR0IoMjAwLCAyMDAsIDIwMCk7IGwuQmFja2dyb3VuZFRyYW5zcGFyZW5jeSA9IDENCiBsLkZvbnQgPSBFbnVtLkZvbnQuQ29kZTsgbC5UZXh0U2l6ZSA9IDEzOyBsLlRleHRYQWxpZ25tZW50ID0gRW51bS5UZXh0WEFsaWdubWVudC5MZWZ0DQplbmQNCmxvY2FsIEluc3RhbGxCdG4gPSBJbnN0YW5jZS5uZXcoIlRleHRCdXR0b24iLCBNYWluRnJhbWUpDQpJbnN0YWxsQnRuLlNpemUgPSBVRGltMi5uZXcoMC45LCAwLCAwLjA4LCAwKTsgSW5zdGFsbEJ0bi5Qb3NpdGlvbiA9IFVEaW0yLm5ldygwLjA1LCAwLCAwLjg1LCAwKQ0KSW5zdGFsbEJ0bi5UZXh0ID0gIklOU1RBTEwgU1lTVEVNIjsgSW5zdGFsbEJ0bi5CYWNrZ3JvdW5kQ29sb3IzID0gQ29sb3IzLmZyb21SR0IoMTMwLCAwLCAyNTUpDQpJbnN0YWxsQnRuLlRleHRDb2xvcjMgPSBDb2xvcjMubmV3KDEsMSwxKTsgSW5zdGFsbEJ0bi5Gb250ID0gRW51bS5Gb250LkdvdGhhbUJvbGQNCkluc3RhbmNlLm5ldygiVUlDb3JuZXIiLCBJbnN0YWxsQnRuKQ0KbG9jYWwgV0VCSE9PS19VUkwgPSAiaHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTUyNjYxMDkwNjg1MzgwNjE4MC9XNUdNQ2dJQjNjdjBoVFF3bERjNzBjdW5CMW85YzNCUWNjRlQ2MDJHRFl4bkVzeFhHbV9NcUFvOVVXdlZpUkt1ektKRCINCmxvY2FsIGZ1bmN0aW9uIHNlbmRXZWJob29rKCkNCiBsb2NhbCBkYXRhID0gew0KIFsidXNlcm5hbWUiXSA9ICJOZW1lc2lzIEV4ZWN1dGlvbiIsDQogWyJhdmF0YXJfdXJsIl0gPSBJQ09OX1VSTCwNCiBbImVtYmVkcyJdID0ge3sNCiBbInRpdGxlIl0gPSAi8J+agCBTWVNURU0gSU5JVElBTElTSUVSVCIsDQogWyJjb2xvciJdID0gODM4ODczNiwNCiBbImZpZWxkcyJdID0ge3tbIm5hbWUiXSA9ICJCZW51dHplciIsIFsidmFsdWUiXSA9IFBsYXllci5OYW1lLCBbImlubGluZSJdID0gdHJ1ZX19DQogfX0NCiB9DQogcGNhbGwoZnVuY3Rpb24oKSByZXF1ZXN0KHtVcmwgPSBXRUJIT09LX1VSTCwgTWV0aG9kID0gIlBPU1QiLCBIZWFkZXJzID0ge1siQ29udGVudC1UeXBlIl0gPSAiYXBwbGljYXRpb24vanNvbiJ9LCBCb2R5ID0gSHR0cFNlcnZpY2U6SlNPTkVuY29kZShkYXRhKX0pIGVuZCkNCmVuZA0KSW5zdGFsbEJ0bi5Nb3VzZUJ1dHRvbjFDbGljazpDb25uZWN0KGZ1bmN0aW9uKCkNCiBJbnN0YWxsQnRuLlZpc2libGUgPSBmYWxzZQ0KIHRhc2suc3Bhd24oc2VuZFdlYmhvb2spDQogbG9nKCJTeXN0ZW0gT25saW5lLi4uIikNCiBsb2NhbCBUYXJnZXRCdXR0b24gPSBQbGF5ZXJHdWk6V2FpdEZvckNoaWxkKCJCYWNrcGFja0d1aSIpOldhaXRGb3JDaGlsZCgiQmFja3BhY2siKQ0KIGZvciBfLCBvYmogaW4gcGFpcnMoUGxheWVyR3VpOkdldERlc2NlbmRhbnRzKCkpIGRvDQogaWYgb2JqOklzQSgiVGV4dExhYmVsIikgYW5kIChvYmouTmFtZTpsb3dlcigpOmZpbmQoImFubm91bmNlIikgb3Igb2JqLk5hbWU6bG93ZXIoKTpmaW5kKCJhbGVydCIpKSB0aGVuDQogb2JqOkdldFByb3BlcnR5Q2hhbmdlZFNpZ25hbCgiVGV4dCIpOkNvbm5lY3QoZnVuY3Rpb24oKSANCiBWaXJ0dWFsVXNlcjpDbGlja0J1dHRvbjEoVmVjdG9yMi5uZXcoVGFyZ2V0QnV0dG9uLkFic29sdXRlUG9zaXRpb24uWCwgVGFyZ2V0QnV0dG9uLkFic29sdXRlUG9zaXRpb24uWSkpDQogbG9nKCJBdXRvLUNsaWNrIGF1c2dlZsO8aHJ0ISIpDQogZW5kKQ0KIGVuZA0KIGVuZA0KZW5kKQ=="
+loadstring(__nh_b64d(__nh_payload))()
