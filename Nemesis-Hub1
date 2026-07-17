@@ -1,4 +1,5 @@
-local LICENSE_KEY = getgenv().LICENSE_KEY or "{{KEY}}" 
+local LICENSE_KEY = "{{KEY}}" 
+if LICENSE_KEY == "{{KEY}}" then LICENSE_KEY = getgenv().LICENSE_KEY or "{{KEY}}" end
 local function __nh_b64d(data)
     local b='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/='
     data = string.gsub(data, '[^'..b..'=]', '')
